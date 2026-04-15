@@ -703,90 +703,58 @@ app.get('/api/sources/:movieId', async (req, res) => {
 // Download proxy endpoint - adds proper headers to bypass CDN restrictions
 app.get('/api/download/*', async (req, res) => {
     try {
-        const downloadUrl = decodeURIComponent(req.url.replace('/api/download/', '')); // Get and decode the URL
-        
-        if (!downloadUrl || (!downloadUrl.startsWith('https://bcdnw.hakunaymatata.com/') && !downloadUrl.startsWith('https://valiw.hakunaymatata.com/'))) {
+        const downloadUrl = decodeURIComponent(req.url.replace('/api/download/', ''));
+
+        console.log("STREAMING:", downloadUrl);
+
+        if (!downloadUrl) {
             return res.status(400).json({
                 status: 'error',
-                message: 'Invalid download URL'
+                message: 'Invalid URL'
             });
         }
-        
-        console.log(`Proxying download: ${downloadUrl}`);
-        
-        // Try to get media info from cache using download URL as key
-        const downloadCacheKey = `download_${Buffer.from(downloadUrl).toString('base64')}`;
-        const downloadInfo = mediaInfoCache.get(downloadCacheKey);
-        
-        let filename = 'movie.mp4'; // Default fallback
-        
-        if (downloadInfo) {
-            const { movieId, season, episode, quality } = downloadInfo;
-            const mediaInfo = getMediaInfo(movieId, season, episode);
-            
-            if (mediaInfo) {
-                filename = generateFilename(mediaInfo, quality, season, episode);
-                console.log(`Generated filename: ${filename} for movieId: ${movieId}, season: ${season}, episode: ${episode}`);
-            }
+
+        // ✅ VERY IMPORTANT: Get range from browser
+        const range = req.headers.range;
+
+        const headers = {
+            'User-Agent': 'Mozilla/5.0',
+            'Referer': HOST_URL,
+            'Origin': HOST_URL
+        };
+
+        if (range) {
+            headers.Range = range;
         }
-        
-        // Make request with proper headers that allow CDN access
+
         const response = await axios({
             method: 'GET',
             url: downloadUrl,
             responseType: 'stream',
-            headers: {
-                'User-Agent': 'okhttp/4.12.0',
-                'Referer': 'https://fmoviesunblocked.net/',
-                'Origin': 'https://fmoviesunblocked.net'
-            }
+            headers
         });
-        
-        // Forward the content-type and other relevant headers
-        res.set({
-            'Content-Type': response.headers['content-type'],
-            'Content-Length': response.headers['content-length'],
-            'Content-Disposition': `attachment; filename="${filename}"`
+
+        // ✅ CRITICAL HEADERS FOR VIDEO STREAMING
+        res.writeHead(response.status, {
+            ...response.headers,
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Range',
+            'Accept-Ranges': 'bytes'
         });
-        
-        // Pipe the video stream to the response
+
+        // ✅ STREAM VIDEO
         response.data.pipe(res);
-        
+
     } catch (error) {
-        console.error('Download proxy error:', error.message);
+        console.error("STREAM ERROR:", error.response?.status, error.message);
+
         res.status(500).json({
             status: 'error',
-            message: 'Failed to proxy download',
+            message: 'Streaming failed',
             error: error.message
         });
     }
 });
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
-    res.status(500).json({
-        status: 'error',
-        message: 'Internal server error',
-        error: err.message
-    });
-});
-
-// 404 handler
-app.use('*', (req, res) => {
-    res.status(404).json({
-        status: 'error',
-        message: 'Endpoint not found',
-        availableEndpoints: [
-            'GET /api/homepage',
-            'GET /api/trending',
-            'GET /api/search/:query',
-            'GET /api/info/:movieId',
-            'GET /api/sources/:movieId'
-        ]
-    });
-});
-
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`MovieBox API Server running on http://0.0.0.0:${PORT}`);
 });

@@ -606,9 +606,51 @@ app.get('/api/info/:movieId', async (req, res) => {
 app.get('/api/sources/:movieId', async (req, res) => {
     try {
         const { movieId } = req.params;
-        const season = parseInt(req.query.season) || 0; // Movies use 0 for season
-        const episode = parseInt(req.query.episode) || 0; // Movies use 0 for episode
-        
+        const season = parseInt(req.query.season) || 0;
+        const episode = parseInt(req.query.episode) || 0;
+
+        // STEP 1: GET PLAY DATA
+        const playRes = await makeApiRequestWithCookies(
+            `${HOST_URL}/wefeed-h5-bff/web/subject/play`,
+            {
+                method: "GET",
+                params: {
+                    subjectId: movieId,
+                    season: season,
+                    episode: episode
+                }
+            }
+        );
+
+        const playData = processApiResponse(playRes);
+
+        console.log("PLAY DATA:", playData);
+
+        // STEP 2: EXTRACT DOWNLOADS
+        let downloads = [];
+
+        if (playData && playData.resourceList) {
+            downloads = playData.resourceList.map(r => ({
+                url: r.url,
+                resolution: r.resolution || r.label || "Auto"
+            }));
+        }
+
+        res.json({
+            status: "success",
+            data: {
+                downloads
+            }
+        });
+
+    } catch (err) {
+        console.error("SOURCE ERROR:", err.message);
+        res.status(500).json({
+            status: "error",
+            message: "Failed to fetch sources"
+        });
+    }
+});
         // First get movie details to get the detailPath for the referer
         console.log(`Getting sources for movieId: ${movieId}`);
         

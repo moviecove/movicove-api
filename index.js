@@ -35,7 +35,7 @@ const MIRROR_HOSTS = [
 ];
 
 // Use different hosts for different endpoints - some mirrors work better for downloads
-const SELECTED_HOST = process.env.MOVIEBOX_API_HOST || "h5.aoneroom.com";
+const SELECTED_HOST = process.env.MOVIEBOX_API_HOST || "mobiebox.ph";
 const HOST_URL = `https://${SELECTED_HOST}`;
 
 // Alternative hosts for download endpoint

@@ -609,7 +609,7 @@ app.get('/api/sources/:movieId', async (req, res) => {
         const season = parseInt(req.query.season) || 0;
         const episode = parseInt(req.query.episode) || 0;
 
-        // STEP 1: GET PLAY DATA
+        // ✅ STEP 1: CALL PLAY ENDPOINT
         const playRes = await makeApiRequestWithCookies(
             `${HOST_URL}/wefeed-h5-bff/web/subject/play`,
             {
@@ -626,7 +626,7 @@ app.get('/api/sources/:movieId', async (req, res) => {
 
         console.log("PLAY DATA:", playData);
 
-        // STEP 2: EXTRACT DOWNLOADS
+        // ✅ STEP 2: EXTRACT DOWNLOADS
         let downloads = [];
 
         if (playData && playData.resourceList) {
@@ -638,9 +638,7 @@ app.get('/api/sources/:movieId', async (req, res) => {
 
         res.json({
             status: "success",
-            data: {
-                downloads
-            }
+            data: { downloads }
         });
 
     } catch (err) {
@@ -651,6 +649,7 @@ app.get('/api/sources/:movieId', async (req, res) => {
         });
     }
 });
+
         // First get movie details to get the detailPath for the referer
         console.log(`Getting sources for movieId: ${movieId}`);
         
